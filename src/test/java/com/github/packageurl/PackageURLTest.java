@@ -23,6 +23,7 @@ package com.github.packageurl;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.TreeMap;
 
 import org.apache.commons.io.IOUtils;
@@ -51,7 +52,7 @@ public class PackageURLTest {
     @BeforeClass
     public static void setup() throws IOException {
         InputStream is = PackageURLTest.class.getResourceAsStream("/test-suite-data.json");
-        String jsonTxt = IOUtils.toString(is, "UTF-8");
+        String jsonTxt = IOUtils.toString(is, StandardCharsets.UTF_8);
         json = new JSONArray(jsonTxt);
     }
 
@@ -77,7 +78,7 @@ public class PackageURLTest {
             if (invalid) {
                 try {
                     PackageURL purl = new PackageURL(purlString);
-                    Assert.fail("Inavlid purl should have caused an exception: " + purl.toString());
+                    Assert.fail("Inavlid purl should have caused an exception: " + purl);
                 } catch (MalformedPackageURLException e) {
                     Assert.assertNotNull(e.getMessage());
                 }
@@ -130,16 +131,16 @@ public class PackageURLTest {
             TreeMap<String, String> map = null;
             if (qualifiers != null) {
                 map = qualifiers.toMap().entrySet().stream().collect(
-                        TreeMap<String, String>::new,
+                        TreeMap::new,
                         (qmap, entry) -> qmap.put(entry.getKey(), (String) entry.getValue()),
-                        TreeMap<String, String>::putAll
+                        TreeMap::putAll
                 );
             }
 
             if (invalid) {
                 try {
                     PackageURL purl = new PackageURL(type, namespace, name, version, map, subpath);
-                    Assert.fail("Invalid package url components should have caused an exception: " + purl.toString());
+                    Assert.fail("Invalid package url components should have caused an exception: " + purl);
                 } catch (MalformedPackageURLException e) {
                     Assert.assertNotNull(e.getMessage());
                 }
@@ -269,23 +270,23 @@ public class PackageURLTest {
     @Test
     public void testStandardTypes() {
         exception = ExpectedException.none();
-        Assert.assertEquals(PackageURL.StandardTypes.BITBUCKET, "bitbucket");
-        Assert.assertEquals(PackageURL.StandardTypes.CARGO, "cargo");
-        Assert.assertEquals(PackageURL.StandardTypes.COMPOSER, "composer");
-        Assert.assertEquals(PackageURL.StandardTypes.DEBIAN, "deb");
-        Assert.assertEquals(PackageURL.StandardTypes.DOCKER, "docker");
-        Assert.assertEquals(PackageURL.StandardTypes.GEM, "gem");
-        Assert.assertEquals(PackageURL.StandardTypes.GENERIC, "generic");
-        Assert.assertEquals(PackageURL.StandardTypes.GITHUB, "github");
-        Assert.assertEquals(PackageURL.StandardTypes.GOLANG, "golang");
-        Assert.assertEquals(PackageURL.StandardTypes.HEX, "hex");
-        Assert.assertEquals(PackageURL.StandardTypes.MAVEN, "maven");
-        Assert.assertEquals(PackageURL.StandardTypes.NPM, "npm");
-        Assert.assertEquals(PackageURL.StandardTypes.NUGET, "nuget");
-        Assert.assertEquals(PackageURL.StandardTypes.PYPI, "pypi");
-        Assert.assertEquals(PackageURL.StandardTypes.RPM, "rpm");
-        Assert.assertEquals(PackageURL.StandardTypes.NIXPKGS, "nixpkgs");
-        Assert.assertEquals(PackageURL.StandardTypes.HACKAGE, "hackage");
+        Assert.assertEquals(PackageURL.StandardTypes.BITBUCKET.getName(), "bitbucket");
+        Assert.assertEquals(PackageURL.StandardTypes.CARGO.getName(), "cargo");
+        Assert.assertEquals(PackageURL.StandardTypes.COMPOSER.getName(), "composer");
+        Assert.assertEquals(PackageURL.StandardTypes.DEBIAN.getName(), "deb");
+        Assert.assertEquals(PackageURL.StandardTypes.DOCKER.getName(), "docker");
+        Assert.assertEquals(PackageURL.StandardTypes.GEM.getName(), "gem");
+        Assert.assertEquals(PackageURL.StandardTypes.GENERIC.getName(), "generic");
+        Assert.assertEquals(PackageURL.StandardTypes.GITHUB.getName(), "github");
+        Assert.assertEquals(PackageURL.StandardTypes.GOLANG.getName(), "golang");
+        Assert.assertEquals(PackageURL.StandardTypes.HEX.getName(), "hex");
+        Assert.assertEquals(PackageURL.StandardTypes.MAVEN.getName(), "maven");
+        Assert.assertEquals(PackageURL.StandardTypes.NPM.getName(), "npm");
+        Assert.assertEquals(PackageURL.StandardTypes.NUGET.getName(), "nuget");
+        Assert.assertEquals(PackageURL.StandardTypes.PYPI.getName(), "pypi");
+        Assert.assertEquals(PackageURL.StandardTypes.RPM.getName(), "rpm");
+        Assert.assertEquals(PackageURL.StandardTypes.NIXPKGS.getName(), "nixpkgs");
+        Assert.assertEquals(PackageURL.StandardTypes.HACKAGE.getName(), "hackage");
     }
 
     @Test

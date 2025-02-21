@@ -55,6 +55,21 @@ public final class PackageURLBuilder {
      * @see PackageURL#getName()
      * @see com.github.packageurl.PackageURL.StandardTypes
      */
+    public PackageURLBuilder withType(PackageURL.StandardTypes type) {
+        this.type = type.getName();
+        return this;
+    }
+
+    /**
+     * Adds the package URL type.
+     *
+     * @param type the package type
+     * @return a reference to the builder
+     * @see PackageURL#getName()
+     * @see com.github.packageurl.PackageURL.StandardTypes
+     * @deprecated use {@link #withType(PackageURL.StandardTypes)} instead
+     */
+    @Deprecated
     public PackageURLBuilder withType(final String type) {
         this.type = type;
         return this;

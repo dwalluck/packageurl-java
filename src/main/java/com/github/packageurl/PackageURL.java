@@ -267,21 +267,30 @@ public final class PackageURL implements Serializable {
         if (values == null || values.length == 0) {
             return null;
         }
-        final String tempNamespace = validatePath(values, false);
 
-        String retVal;
-        switch (type) {
-            case StandardTypes.BITBUCKET:
-            case StandardTypes.DEBIAN:
-            case StandardTypes.GITHUB:
-            case StandardTypes.GOLANG:
-            case StandardTypes.RPM:
-                retVal = tempNamespace.toLowerCase();
+        final String tempNamespace = validatePath(values, false);
+        String retVal = null;
+        StandardTypes standardType = StandardTypes.of(type);
+
+        if (standardType == null) {
+            return tempNamespace;
+        }
+
+        switch (standardType) {
+            case BITBUCKET:
+            case DEBIAN:
+            case GITHUB:
+            case GOLANG:
+            case RPM:
+                if (tempNamespace != null) {
+                    retVal = tempNamespace.toLowerCase();
+                }
                 break;
             default:
                 retVal = tempNamespace;
                 break;
         }
+
         return retVal;
     }
 
@@ -289,15 +298,22 @@ public final class PackageURL implements Serializable {
         if (value == null || value.isEmpty()) {
             throw new MalformedPackageURLException("The PackageURL name specified is invalid");
         }
+
         String temp;
-        switch (type) {
-            case StandardTypes.BITBUCKET:
-            case StandardTypes.DEBIAN:
-            case StandardTypes.GITHUB:
-            case StandardTypes.GOLANG:
+        StandardTypes standardType = StandardTypes.of(type);
+
+        if (standardType == null) {
+            return value;
+        }
+
+        switch (standardType) {
+            case BITBUCKET:
+            case DEBIAN:
+            case GITHUB:
+            case GOLANG:
                 temp = value.toLowerCase();
                 break;
-            case StandardTypes.PYPI:
+            case PYPI:
                 temp = value.replaceAll("_", "-").toLowerCase();
                 break;
             default:
@@ -579,7 +595,7 @@ public final class PackageURL implements Serializable {
                 remainder.setLength(index);
             }
 
-            // The 'remainder' should now consist of the an optional namespace, and the name
+            // The 'remainder' should now consist of an optional namespace, and the name
             index = remainder.lastIndexOf("/");
             if (index <= start) {
                 this.name = validateName(percentDecode(remainder.substring(start)));
@@ -602,7 +618,7 @@ public final class PackageURL implements Serializable {
      * @throws MalformedPackageURLException if constraints are not met
      */
     private void verifyTypeConstraints(String type, String namespace, String name) throws MalformedPackageURLException {
-        if (StandardTypes.MAVEN.equals(type)) {
+        if (StandardTypes.MAVEN.getName().equals(type)) {
             if (namespace == null || namespace.isEmpty() || name == null || name.isEmpty()) {
                 throw new MalformedPackageURLException("The PackageURL specified is invalid. Maven requires both a namespace and name.");
             }
@@ -725,26 +741,57 @@ public final class PackageURL implements Serializable {
     /**
      * Convenience constants that defines common Package-URL 'type's.
      *
-     * @since 1.0.0
+     * @since 2.0.0
      */
-    public static class StandardTypes {
-        public static final String BITBUCKET = "bitbucket";
-        public static final String CARGO = "cargo";
-        public static final String COMPOSER = "composer";
-        public static final String DEBIAN = "deb";
-        public static final String DOCKER = "docker";
-        public static final String GEM = "gem";
-        public static final String GENERIC = "generic";
-        public static final String GITHUB = "github";
-        public static final String GOLANG = "golang";
-        public static final String HEX = "hex";
-        public static final String MAVEN = "maven";
-        public static final String NPM = "npm";
-        public static final String NUGET = "nuget";
-        public static final String PYPI = "pypi";
-        public static final String RPM = "rpm";
-        public static final String NIXPKGS = "nixpkgs";
-        public static final String HACKAGE = "hackage";
+    public enum StandardTypes {
+         BITBUCKET("bitbucket"),
+         CARGO("cargo"),
+         COMPOSER("composer"),
+         DEBIAN("deb"),
+         DOCKER("docker"),
+         GEM("gem"),
+         GENERIC("generic"),
+         GITHUB("github"),
+         GOLANG("golang"),
+         HEX("hex"),
+         MAVEN("maven"),
+         NPM("npm"),
+         NUGET("nuget"),
+         PYPI("pypi"),
+         RPM("rpm"),
+         NIXPKGS("nixpkgs"),
+         HACKAGE("hackage");
+
+        private final String name;
+
+        StandardTypes(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public static StandardTypes of(String name) throws MalformedPackageURLException {
+            if (name == null || name.isEmpty()) {
+                throw new MalformedPackageURLException("The PackageURL type cannot be null or empty");
+            }
+
+            StandardTypes[] types = StandardTypes.values();
+
+            for (StandardTypes type : types) {
+                if (type.name.equals(name)) {
+                    return type;
+                }
+            }
+
+            return null;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
     }
 
 }
