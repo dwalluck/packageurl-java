@@ -21,24 +21,19 @@
  */
 package com.github.packageurl;
 
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class PackageURLBuilderTest {
-
-    @Rule
-    public ExpectedException exception = ExpectedException.none();
-
+class PackageURLBuilderTest {
     @Test
-    public void testPackageURLBuilder() throws MalformedPackageURLException {
-        exception = ExpectedException.none();
-
+    void testPackageURLBuilder() throws MalformedPackageURLException {
         PackageURL purl = PackageURLBuilder.aPackageURL()
                 .withType("my.type-9+")
                 .withName("name")
@@ -94,86 +89,71 @@ public class PackageURLBuilderTest {
     }
 
     @Test
-    public void testPackageURLBuilderException1() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-        exception.expectMessage("contains a qualifier key with an empty or null");
+    void testPackageURLBuilderException1() throws MalformedPackageURLException {
         PackageURL purl = PackageURLBuilder.aPackageURL()
                 .withType("type")
                 .withName("name")
                 .withQualifier("key","")
                 .build();
-        Assert.fail("Build should fail due to invalid qualifier (empty value)");
+        assertNull(purl.getQualifiers());
     }
 
     @Test
-    public void testPackageURLBuilderException1Null() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-        exception.expectMessage("contains a qualifier key with an empty or null");
-        PackageURLBuilder.aPackageURL()
+    void testPackageURLBuilderException1Null() throws MalformedPackageURLException {
+        PackageURL purl = PackageURLBuilder.aPackageURL()
                 .withType("type")
                 .withName("name")
                 .withQualifier("key",null)
                 .build();
-        Assert.fail("Build should fail due to invalid qualifier (null value)");
+        assertNull(purl.getQualifiers());
     }
 
     @Test
-    public void testPackageURLBuilderException2() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-        PackageURL purl = PackageURLBuilder.aPackageURL()
+    void testPackageURLBuilderException2() {
+        assertThrows(MalformedPackageURLException.class, () -> PackageURLBuilder.aPackageURL()
                 .withType("type")
                 .withNamespace("invalid//namespace")
                 .withName("name")
-                .build();
-        Assert.fail("Build should fail due to invalid namespace");
+                .build());
     }
 
     @Test
-    public void testPackageURLBuilderException3() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-        PackageURL purl = PackageURLBuilder.aPackageURL()
+    void testPackageURLBuilderException3() {
+        assertThrows(MalformedPackageURLException.class, () -> PackageURLBuilder.aPackageURL()
                 .withType("typ^e")
                 .withSubpath("invalid/name%2Fspace")
                 .withName("name")
-                .build();
-        Assert.fail("Build should fail due to invalid subpath");
+                .build());
     }
 
     @Test
-    public void testPackageURLBuilderException4() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-        PackageURL purl = PackageURLBuilder.aPackageURL()
+    void testPackageURLBuilderException4() {
+        assertThrows(MalformedPackageURLException.class, () -> PackageURLBuilder.aPackageURL()
                 .withType("0_type")
                 .withName("name")
-                .build();
-        Assert.fail("Build should fail due to invalid type");
+                .build());
     }
 
     @Test
-    public void testPackageURLBuilderException5() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-        PackageURL purl = PackageURLBuilder.aPackageURL()
+    void testPackageURLBuilderException5() {
+        assertThrows(MalformedPackageURLException.class, () -> PackageURLBuilder.aPackageURL()
                 .withType("ype")
                 .withName("name")
                 .withQualifier("0_key","value")
-                .build();
-        Assert.fail("Build should fail due to invalid qualifier key");
+                .build());
     }
 
     @Test
-    public void testPackageURLBuilderException6() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-        PackageURL purl = PackageURLBuilder.aPackageURL()
+    void testPackageURLBuilderException6() {
+        assertThrows(MalformedPackageURLException.class, () -> PackageURLBuilder.aPackageURL()
                 .withType("ype")
                 .withName("name")
                 .withQualifier("","value")
-                .build();
-        Assert.fail("Build should fail due to invalid qualifier key");
+                .build());
     }
 
     @Test
-    public void testEditBuilder1() throws MalformedPackageURLException {
-
+    void testEditBuilder1() throws MalformedPackageURLException {
         PackageURL p = new PackageURL("pkg:generic/namespace/name@1.0.0?k=v#s");
         PackageURLBuilder b = p.toBuilder();
         assertBuilderMatch(p, b);
@@ -190,30 +170,59 @@ public class PackageURLBuilderTest {
                 .withoutQualifier("dark");
 
         assertBuilderMatch(new PackageURL("pkg:maven/org.junit/junit5@3.1.2?repo=maven&ping=pong#sub"), b);
+    }
 
+    @Test
+    void testQualifiers() throws MalformedPackageURLException {
+        Map<String, String> qualifiers = new HashMap<>();
+        qualifiers.put("key2", "value2");
+        Map<String, String> qualifiers2 = new HashMap<>();
+        qualifiers.put("key3", "value3");
+        PackageURL purl = PackageURLBuilder.aPackageURL()
+                .withType(PackageURL.StandardTypes.GENERIC)
+                .withNamespace("")
+                .withName("name")
+                .withVersion("version")
+                .withQualifier("key", "value")
+                .withQualifier("next", "value")
+                .withQualifiers(qualifiers)
+                .withQualifier("key4", "value4")
+                .withQualifiers(qualifiers2)
+                .withSubpath("")
+                .withoutQualifiers(Collections.singleton("key4"))
+                .build();
+
+        assertEquals("pkg:generic/name@version?key=value&key2=value2&key3=value3&next=value", purl.toString());
+    }
+
+    @Test
+    void testFromExistingPurl() throws MalformedPackageURLException {
+        String purl = "pkg:generic/namespace/name@1.0.0?k=v#s";
+        PackageURL p = new PackageURL(purl);
+        PackageURL purl2 = PackageURLBuilder.aPackageURL(p).build();
+        PackageURL purl3 = PackageURLBuilder.aPackageURL(purl).build();
+        assertEquals(p, purl2);
+        assertEquals(purl2, purl3);
     }
 
     private void assertBuilderMatch(PackageURL expected, PackageURLBuilder actual) throws MalformedPackageURLException {
-
-        Assert.assertEquals(expected.toString(), actual.build().toString());
-        Assert.assertEquals(expected.getType(), actual.getType());
-        Assert.assertEquals(expected.getNamespace(), actual.getNamespace());
-        Assert.assertEquals(expected.getName(), actual.getName());
-        Assert.assertEquals(expected.getVersion(), actual.getVersion());
-        Assert.assertEquals(expected.getSubpath(), actual.getSubpath());
+        assertEquals(expected.toString(), actual.build().toString());
+        assertEquals(expected.getType(), actual.getType());
+        assertEquals(expected.getNamespace(), actual.getNamespace());
+        assertEquals(expected.getName(), actual.getName());
+        assertEquals(expected.getVersion(), actual.getVersion());
+        assertEquals(expected.getSubpath(), actual.getSubpath());
 
         Map<String, String> eQualifiers = expected.getQualifiers();
         Map<String, String> aQualifiers = actual.getQualifiers();
 
-        if (eQualifiers != null) {
-            eQualifiers.forEach((k,v)-> {
-                Assert.assertEquals(v, aQualifiers.remove(k));
-                Assert.assertEquals(v, actual.getQualifier(k));
+        assertEquals(eQualifiers, aQualifiers);
+
+        if (eQualifiers != null && aQualifiers != null) {
+            eQualifiers.forEach((k, v) -> {
+                assertEquals(v, actual.getQualifier(k));
             });
         }
-
-        Assert.assertTrue(aQualifiers.isEmpty());
-
     }
 
 }

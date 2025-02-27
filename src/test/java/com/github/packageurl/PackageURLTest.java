@@ -23,41 +23,57 @@ package com.github.packageurl;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.TreeMap;
 
-import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.json.JSONTokener;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Test cases for PackageURL parsing
  * <p>
- * Original test cases retrieved from: https://raw.githubusercontent.com/package-url/purl-spec/master/test-suite-data.json
+ * Original test cases retrieved from:
+ * <a href="https://raw.githubusercontent.com/package-url/purl-spec/master/test-suite-data.json">https://raw.githubusercontent.com/package-url/purl-spec/master/test-suite-data.json</a>
  *
  * @author Steve Springett
  */
-public class PackageURLTest {
-
-    @Rule
-    public ExpectedException exception = ExpectedException.none();
-
+class PackageURLTest {
     private static JSONArray json = new JSONArray();
 
-    @BeforeClass
+    @BeforeAll
     public static void setup() throws IOException {
-        InputStream is = PackageURLTest.class.getResourceAsStream("/test-suite-data.json");
-        String jsonTxt = IOUtils.toString(is, "UTF-8");
-        json = new JSONArray(jsonTxt);
+        try (InputStream is = PackageURLTest.class.getResourceAsStream("/test-suite-data.json")) {
+            assertNotNull(is);
+            json = new JSONArray(new JSONTokener(is));
+        }
     }
 
     @Test
-    public void testConstructorParsing() throws Exception {
-        exception = ExpectedException.none();
+    void testEncoding1() throws MalformedPackageURLException {
+        PackageURL purl = new PackageURL("maven", "com.google.summit", "summit-ast", "2.2.0\n", null, null);
+        assertEquals("pkg:maven/com.google.summit/summit-ast@2.2.0%0A", purl.toString());
+    }
+
+    @Test
+    void testEncoding2() throws MalformedPackageURLException {
+        PackageURL purl = new PackageURL("pkg:nuget/%D0%9Cicros%D0%BEft.%D0%95ntit%D1%83Fram%D0%B5work%D0%A1%D0%BEr%D0%B5");
+        assertEquals("Мicrosоft.ЕntitуFramеworkСоrе", purl.getName());
+        assertEquals("pkg:nuget/%D0%9Cicros%D0%BEft.%D0%95ntit%D1%83Fram%D0%B5work%D0%A1%D0%BEr%D0%B5", purl.toString());
+    }
+
+    @Test
+    void testConstructorParsing() throws Exception {
         for (int i = 0; i < json.length(); i++) {
             JSONObject testDefinition = json.getJSONObject(i);
 
@@ -77,40 +93,38 @@ public class PackageURLTest {
             if (invalid) {
                 try {
                     PackageURL purl = new PackageURL(purlString);
-                    Assert.fail("Inavlid purl should have caused an exception: " + purl.toString());
+                    fail("Inavlid purl should have caused an exception: " + purl);
                 } catch (MalformedPackageURLException e) {
-                    Assert.assertNotNull(e.getMessage());
+                    assertNotNull(e.getMessage());
                 }
                 continue;
             }
 
             PackageURL purl = new PackageURL(purlString);
 
-            Assert.assertEquals("pkg", purl.getScheme());
-            Assert.assertEquals(type, purl.getType());
-            Assert.assertEquals(namespace, purl.getNamespace());
-            Assert.assertEquals(name, purl.getName());
-            Assert.assertEquals(version, purl.getVersion());
-            Assert.assertEquals(subpath, purl.getSubpath());
+            assertEquals("pkg", purl.getScheme());
+            assertEquals(type, purl.getType());
+            assertEquals(namespace, purl.getNamespace());
+            assertEquals(name, purl.getName());
+            assertEquals(version, purl.getVersion());
+            assertEquals(subpath, purl.getSubpath());
             if (qualifiers == null) {
-                Assert.assertNull(purl.getQualifiers());
+                assertNull(purl.getQualifiers());
             } else {
-                Assert.assertNotNull(purl.getQualifiers());
-                Assert.assertEquals(qualifiers.length(), purl.getQualifiers().size());
-                qualifiers.keySet().forEach((key) -> {
+                assertNotNull(purl.getQualifiers());
+                assertEquals(qualifiers.length(), purl.getQualifiers().size());
+                qualifiers.keySet().forEach(key -> {
                     String value = qualifiers.getString(key);
-                    Assert.assertTrue(purl.getQualifiers().containsKey(key));
-                    Assert.assertEquals(value, purl.getQualifiers().get(key));
+                    assertTrue(purl.getQualifiers().containsKey(key));
+                    assertEquals(value, purl.getQualifiers().get(key));
                 });
             }
-            Assert.assertEquals(cpurlString, purl.canonicalize());
+            assertEquals(cpurlString, purl.canonicalize());
         }
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    public void testConstructorParameters() throws MalformedPackageURLException {
-        exception = ExpectedException.none();
+    void testConstructorParameters() throws MalformedPackageURLException {
         for (int i = 0; i < json.length(); i++) {
             JSONObject testDefinition = json.getJSONObject(i);
 
@@ -128,205 +142,243 @@ public class PackageURLTest {
             final String subpath = testDefinition.optString("subpath", null);
 
             TreeMap<String, String> map = null;
+            Map<String, String> hashMap = null;
             if (qualifiers != null) {
                 map = qualifiers.toMap().entrySet().stream().collect(
-                        TreeMap<String, String>::new,
+                        TreeMap::new,
                         (qmap, entry) -> qmap.put(entry.getKey(), (String) entry.getValue()),
-                        TreeMap<String, String>::putAll
+                        TreeMap::putAll
                 );
+                hashMap = new HashMap<>(map);
             }
+
+
 
             if (invalid) {
                 try {
                     PackageURL purl = new PackageURL(type, namespace, name, version, map, subpath);
-                    Assert.fail("Invalid package url components should have caused an exception: " + purl.toString());
+                    // If we get here, then only the scheme can be invalid
+                    verifyComponentsEquals(purl, type, namespace, name, version, subpath, qualifiers);
+
+                    if (!cpurlString.equals(purl.toString())) {
+                        throw new MalformedPackageURLException("The PackageURL scheme is invalid for purl: " + purl);
+                    }
+
+                    fail("Invalid package url components should have caused an exception: " + purl);
                 } catch (MalformedPackageURLException e) {
-                    Assert.assertNotNull(e.getMessage());
+                    assertNotNull(e.getMessage());
                 }
                 continue;
             }
 
             PackageURL purl = new PackageURL(type, namespace, name, version, map, subpath);
-
-            Assert.assertEquals(cpurlString, purl.canonicalize());
-            Assert.assertEquals("pkg", purl.getScheme());
-            Assert.assertEquals(type, purl.getType());
-            Assert.assertEquals(namespace, purl.getNamespace());
-            Assert.assertEquals(name, purl.getName());
-            Assert.assertEquals(version, purl.getVersion());
-            Assert.assertEquals(subpath, purl.getSubpath());
+            verifyComponentsEquals(purl, type, namespace, name, version, subpath, qualifiers);
+            assertEquals(cpurlString, purl.canonicalize());
             if (qualifiers != null) {
-                Assert.assertNotNull(purl.getQualifiers());
-                Assert.assertEquals(qualifiers.length(), purl.getQualifiers().size());
-                qualifiers.keySet().forEach((key) -> {
+                assertNotNull(purl.getQualifiers());
+                assertEquals(qualifiers.length(), purl.getQualifiers().size());
+                qualifiers.keySet().forEach(key -> {
                     String value = qualifiers.getString(key);
-                    Assert.assertTrue(purl.getQualifiers().containsKey(key));
-                    Assert.assertEquals(value, purl.getQualifiers().get(key));
+                    assertTrue(purl.getQualifiers().containsKey(key));
+                    assertEquals(value, purl.getQualifiers().get(key));
                 });
+                PackageURL purl2 = new PackageURL(type, namespace, name, version, hashMap, subpath);
+                assertEquals(purl.getQualifiers(), purl2.getQualifiers());
             }
         }
     }
 
     @Test
-    public void testConstructor() throws MalformedPackageURLException {
-        exception = ExpectedException.none();
-
+    void testConstructor() throws MalformedPackageURLException {
         PackageURL purl = new PackageURL("pkg:generic/namespace/name@1.0.0#");
-        Assert.assertEquals("generic", purl.getType());
-        Assert.assertNull(purl.getSubpath());
+        assertEquals("generic", purl.getType());
+        assertNull(purl.getSubpath());
 
         purl = new PackageURL("pkg:generic/namespace/name@1.0.0?key=value==");
-        Assert.assertEquals("generic", purl.getType());
-        Assert.assertEquals(1, purl.getQualifiers().size());
-        Assert.assertTrue(purl.getQualifiers().containsValue("value=="));
+        assertEquals("generic", purl.getType());
+        assertNotNull(purl.getQualifiers());
+        assertEquals(1, purl.getQualifiers().size());
+        assertTrue(purl.getQualifiers().containsValue("value=="));
 
         purl = new PackageURL("validtype", "name");
-        Assert.assertNotNull(purl);
+        assertNotNull(purl);
 
-    }
-
-    @Test
-    public void testConstructorWithEmptyType() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-
-        PackageURL purl = new PackageURL("", "name");
-        Assert.fail("constructor with an empty type should have thrown an error and this line should not be reached");
-    }
-
-    @Test
-    public void testConstructorWithInvalidCharsType() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-
-        PackageURL purl = new PackageURL("invalid^type", "name");
-        Assert.fail("constructor with `invalid^type` should have thrown an error and this line should not be reached");
-    }
-
-    @Test
-    public void testConstructorWithInvalidNumberType() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-
-        PackageURL purl = new PackageURL("0invalid", "name");
-        Assert.fail("constructor with `0invalid` should have thrown an error and this line should not be reached");
-    }
-
-    @Test
-    public void testConstructorWithInvalidSubpath() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-
-        PackageURL purl = new PackageURL("pkg:GOLANG/google.golang.org/genproto@abcdedf#invalid/%2F/subpath");
-        Assert.fail("constructor with `invalid/%2F/subpath` should have thrown an error and this line should not be reached");
     }
 
 
     @Test
-    public void testConstructorWithNullPurl() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-
-        PackageURL purl = new PackageURL(null);
-        Assert.fail("constructor with null purl should have thrown an error and this line should not be reached");
+    void testConstructorWithEmptyType() {
+        assertThrows(MalformedPackageURLException.class, () -> new PackageURL("", "name"));
     }
 
     @Test
-    public void testConstructorWithEmptyPurl() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-
-        PackageURL purl = new PackageURL("");
-        Assert.fail("constructor with empty purl should have thrown an error and this line should not be reached");
+    void testConstructorWithInvalidCharsType() {
+        assertThrows(MalformedPackageURLException.class, () -> new PackageURL("invalid^type", "name"));
     }
 
     @Test
-    public void testConstructorWithPortNumber() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-
-        PackageURL purl = new PackageURL("pkg://generic:8080/name");
-        Assert.fail("constructor with port number should have thrown an error and this line should not be reached");
+    void testConstructorWithInvalidNumberType() {
+        assertThrows(MalformedPackageURLException.class, () -> new PackageURL("0invalid", "name"));
     }
 
     @Test
-    public void testConstructorWithUsername() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
+    void testConstructorWithInvalidSubpath() {
+         assertThrows(MalformedPackageURLException.class, () -> new PackageURL("pkg:GOLANG/google.golang.org/genproto@abcdedf#invalid/%2F/subpath"));
+    }
 
-        PackageURL purl = new PackageURL("pkg://user@generic/name");
-        Assert.fail("constructor with username should have thrown an error and this line should not be reached");
+
+    @Test
+    void testConstructorWithNullPurl() {
+         assertThrows(MalformedPackageURLException.class, () -> new PackageURL(null));
     }
 
     @Test
-    public void testConstructorWithInvalidUrl() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-
-        PackageURL purl = new PackageURL("invalid url");
-        Assert.fail("constructor with invalid url should have thrown an error and this line should not be reached");
+    void testConstructorWithEmptyPurl() {
+         assertThrows(MalformedPackageURLException.class, () -> new PackageURL(""));
     }
 
     @Test
-    public void testConstructorWithDuplicateQualifiers() throws MalformedPackageURLException {
-        exception.expect(MalformedPackageURLException.class);
-
-        PackageURL purl = new PackageURL("pkg://generic/name?key=one&key=two");
-        Assert.fail("constructor with url with duplicate qualifiers should have thrown an error and this line should not be reached");
+    void testConstructorWithPortNumber() {
+         assertThrows(MalformedPackageURLException.class, () -> new PackageURL("pkg://generic:8080/name"));
     }
 
     @Test
-    public void testStandardTypes() {
-        exception = ExpectedException.none();
-        Assert.assertEquals(PackageURL.StandardTypes.BITBUCKET, "bitbucket");
-        Assert.assertEquals(PackageURL.StandardTypes.CARGO, "cargo");
-        Assert.assertEquals(PackageURL.StandardTypes.COMPOSER, "composer");
-        Assert.assertEquals(PackageURL.StandardTypes.DEBIAN, "deb");
-        Assert.assertEquals(PackageURL.StandardTypes.DOCKER, "docker");
-        Assert.assertEquals(PackageURL.StandardTypes.GEM, "gem");
-        Assert.assertEquals(PackageURL.StandardTypes.GENERIC, "generic");
-        Assert.assertEquals(PackageURL.StandardTypes.GITHUB, "github");
-        Assert.assertEquals(PackageURL.StandardTypes.GOLANG, "golang");
-        Assert.assertEquals(PackageURL.StandardTypes.HEX, "hex");
-        Assert.assertEquals(PackageURL.StandardTypes.MAVEN, "maven");
-        Assert.assertEquals(PackageURL.StandardTypes.NPM, "npm");
-        Assert.assertEquals(PackageURL.StandardTypes.NUGET, "nuget");
-        Assert.assertEquals(PackageURL.StandardTypes.PYPI, "pypi");
-        Assert.assertEquals(PackageURL.StandardTypes.RPM, "rpm");
-        Assert.assertEquals(PackageURL.StandardTypes.NIXPKGS, "nixpkgs");
-        Assert.assertEquals(PackageURL.StandardTypes.HACKAGE, "hackage");
+    void testConstructorWithUsername() {
+         assertThrows(MalformedPackageURLException.class, () -> new PackageURL("pkg://user@generic/name"));
     }
 
     @Test
-    public void testBaseEquals() throws Exception {
+    void testConstructorWithInvalidUrl() {
+         assertThrows(MalformedPackageURLException.class, () -> new PackageURL("invalid url"));
+    }
+
+    @Test
+    void testConstructorWithDuplicateQualifiers() {
+         assertThrows(MalformedPackageURLException.class, () -> new PackageURL("pkg://generic/name?key=one&key=two"));
+    }
+
+    @Test
+    void testConstructorDuplicateQualifiersMixedCase() {
+         assertThrows(MalformedPackageURLException.class, () -> new PackageURL("pkg://generic/name?key=one&KEY=two"));
+    }
+
+    @Test
+    void testConstructorWithUppercaseKey() throws MalformedPackageURLException {
+        PackageURL purl = new PackageURL("pkg://generic/name?KEY=one");
+        assertNotNull(purl.getQualifiers());
+        assertEquals("one", purl.getQualifiers().get("key"));
+        PackageURL purl2 = new PackageURL("generic", null, "name", null, new TreeMap<String, String>() {{
+            put("KEY", "one");
+        }}, null);
+        assertEquals(purl, purl2);
+    }
+
+    @Test
+    void testConstructorWithEmptyKey() throws MalformedPackageURLException {
+        PackageURL purl = new PackageURL("pkg://generic/name?KEY");
+        assertNull(purl.getQualifiers());
+        TreeMap<String, String> qualifiers = new TreeMap<>();
+        qualifiers.put("KEY", null);
+        PackageURL purl2 = new PackageURL("generic", null, "name", null, qualifiers, null);
+        assertEquals(purl, purl2);
+        qualifiers.put("KEY", "");
+        PackageURL purl3 = new PackageURL("generic", null, "name", null, qualifiers, null);
+        assertEquals(purl2, purl3);
+    }
+
+    private static void verifyComponentsEquals(PackageURL purl, String type, String namespace, String name, String version, String subpath, JSONObject qualifiers) {
+        assertEquals("pkg", purl.getScheme());
+        assertEquals(type, purl.getType());
+        assertEquals(namespace, purl.getNamespace());
+        assertEquals(name, purl.getName());
+        assertEquals(version, purl.getVersion());
+        assertEquals(subpath, purl.getSubpath());
+        if (qualifiers != null) {
+            assertNotNull(purl.getQualifiers());
+            assertEquals(qualifiers.length(), purl.getQualifiers().size());
+            qualifiers.keySet().forEach(key -> {
+                String value = qualifiers.getString(key);
+                assertTrue(purl.getQualifiers().containsKey(key));
+                assertEquals(value, purl.getQualifiers().get(key));
+            });
+        }
+    }
+
+    @Test
+    void testStandardTypes() {
+        assertEquals("alpm", PackageURL.StandardTypes.ALPM);
+        assertEquals("apk", PackageURL.StandardTypes.APK);
+        assertEquals("bitbucket", PackageURL.StandardTypes.BITBUCKET);
+        assertEquals("bitnami", PackageURL.StandardTypes.BITNAMI);
+        assertEquals("cocoapods", PackageURL.StandardTypes.COCOAPODS);
+        assertEquals("cargo", PackageURL.StandardTypes.CARGO);
+        assertEquals("composer", PackageURL.StandardTypes.COMPOSER);
+        assertEquals("conan", PackageURL.StandardTypes.CONAN);
+        assertEquals("conda", PackageURL.StandardTypes.CONDA);
+        assertEquals("cpan", PackageURL.StandardTypes.CPAN);
+        assertEquals("cran", PackageURL.StandardTypes.CRAN);
+        assertEquals("deb", PackageURL.StandardTypes.DEB);
+        assertEquals("docker", PackageURL.StandardTypes.DOCKER);
+        assertEquals("gem", PackageURL.StandardTypes.GEM);
+        assertEquals("generic", PackageURL.StandardTypes.GENERIC);
+        assertEquals("github", PackageURL.StandardTypes.GITHUB);
+        assertEquals("golang", PackageURL.StandardTypes.GOLANG);
+        assertEquals("hackage", PackageURL.StandardTypes.HACKAGE);
+        assertEquals("hex", PackageURL.StandardTypes.HEX);
+        assertEquals("huggingface", PackageURL.StandardTypes.HUGGINGFACE);
+        assertEquals("luarocks", PackageURL.StandardTypes.LUAROCKS);
+        assertEquals("maven", PackageURL.StandardTypes.MAVEN);
+        assertEquals("mlflow", PackageURL.StandardTypes.MLFLOW);
+        assertEquals("npm", PackageURL.StandardTypes.NPM);
+        assertEquals("nuget", PackageURL.StandardTypes.NUGET);
+        assertEquals("qpkg", PackageURL.StandardTypes.QPKG);
+        assertEquals("oci", PackageURL.StandardTypes.OCI);
+        assertEquals("pub", PackageURL.StandardTypes.PUB);
+        assertEquals("pypi", PackageURL.StandardTypes.PYPI);
+        assertEquals("rpm", PackageURL.StandardTypes.RPM);
+        assertEquals("swid", PackageURL.StandardTypes.SWID);
+        assertEquals("swift", PackageURL.StandardTypes.SWIFT);
+    }
+
+    @Test
+    void testBaseEquals() throws Exception {
         PackageURL p1 = new PackageURL("pkg:generic/acme/example-component@1.0.0?key1=value1&key2=value2");
         PackageURL p2 = new PackageURL("pkg:generic/acme/example-component@1.0.0");
-        Assert.assertTrue(p1.isBaseEquals(p2));
+        assertTrue(p1.isBaseEquals(p2));
     }
 
     @Test
-    public void testCanonicalEquals() throws Exception {
+    void testCanonicalEquals() throws Exception {
         PackageURL p1 = new PackageURL("pkg:generic/acme/example-component@1.0.0?key1=value1&key2=value2");
         PackageURL p2 = new PackageURL("pkg:generic/acme/example-component@1.0.0?key2=value2&key1=value1");
-        Assert.assertTrue(p1.isCanonicalEquals(p2));
+        assertTrue(p1.isCanonicalEquals(p2));
     }
 
     @Test
-    public void testGetCoordinates() throws Exception {
+    void testGetCoordinates() throws Exception {
         PackageURL purl = new PackageURL("pkg:generic/acme/example-component@1.0.0?key1=value1&key2=value2");
-        Assert.assertEquals("pkg:generic/acme/example-component@1.0.0", purl.getCoordinates());
+        assertEquals("pkg:generic/acme/example-component@1.0.0", purl.getCoordinates());
     }
 
     @Test
-    public void testGetCoordinatesNoCacheIssue89() throws Exception {
+    void testGetCoordinatesNoCacheIssue89() throws Exception {
         PackageURL purl = new PackageURL("pkg:generic/acme/example-component@1.0.0?key1=value1&key2=value2");
         purl.canonicalize();
-        Assert.assertEquals("pkg:generic/acme/example-component@1.0.0", purl.getCoordinates());
+        assertEquals("pkg:generic/acme/example-component@1.0.0", purl.getCoordinates());
     }
 
     @Test
-    public void testNpmCaseSensitive() throws Exception {
+    void testNpmCaseSensitive() throws Exception {
         // e.g. https://www.npmjs.com/package/base64/v/1.0.0
         PackageURL base64Lowercase = new PackageURL("pkg:npm/base64@1.0.0");
-        Assert.assertEquals(base64Lowercase.getType(), "npm");
-        Assert.assertEquals(base64Lowercase.getName(), "base64");
-        Assert.assertEquals(base64Lowercase.getVersion(), "1.0.0");
+        assertEquals("npm", base64Lowercase.getType());
+        assertEquals("base64", base64Lowercase.getName());
+        assertEquals("1.0.0", base64Lowercase.getVersion());
 
         // e.g. https://www.npmjs.com/package/Base64/v/1.0.0
         PackageURL base64Uppercase = new PackageURL("pkg:npm/Base64@1.0.0");
-        Assert.assertEquals(base64Uppercase.getType(), "npm");
-        Assert.assertEquals(base64Uppercase.getName(), "Base64");
-        Assert.assertEquals(base64Uppercase.getVersion(), "1.0.0");
+        assertEquals("npm", base64Uppercase.getType());
+        assertEquals("Base64", base64Uppercase.getName());
+        assertEquals("1.0.0", base64Uppercase.getVersion());
     }
 }

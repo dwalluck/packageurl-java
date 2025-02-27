@@ -21,6 +21,9 @@
  */
 package com.github.packageurl;
 
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -35,7 +38,7 @@ public final class PackageURLBuilder {
     private TreeMap<String, String> qualifiers = null;
 
     private PackageURLBuilder() {
-        //empty constructor for utility class
+        // empty constructor for utility class
     }
 
     /**
@@ -45,6 +48,26 @@ public final class PackageURLBuilder {
      */
     public static PackageURLBuilder aPackageURL() {
         return new PackageURLBuilder();
+    }
+
+    /**
+     * Obtain a reference to a new builder object initialized with the existing {@link PackageURL} object.
+     *
+     * @param packageURL the existing Package URL object
+     * @return a new builder object.
+     */
+    public static PackageURLBuilder aPackageURL(final PackageURL packageURL) {
+        return packageURL.toBuilder();
+    }
+
+    /**
+     * Obtain a reference to a new builder object initialized with the existing Package URL string.
+     *
+     * @param purl the existing Package URL string
+     * @return a new builder object.
+     */
+    public static PackageURLBuilder aPackageURL(final String purl) throws MalformedPackageURLException {
+        return new PackageURL(purl).toBuilder();
     }
 
     /**
@@ -125,6 +148,26 @@ public final class PackageURLBuilder {
     }
 
     /**
+     * Adds the package qualifiers.
+     *
+     * @param qualifiers the package qualifiers
+     * @return a reference to the builder
+     * @see PackageURL#getQualifiers()
+     */
+    public PackageURLBuilder withQualifiers(final Map<String, String> qualifiers) {
+        if (qualifiers == null) {
+            this.qualifiers = null;
+        } else {
+            if (this.qualifiers == null) {
+                this.qualifiers = new TreeMap<>(qualifiers);
+            } else {
+                this.qualifiers.putAll(qualifiers);
+            }
+        }
+        return this;
+    }
+
+    /**
      * Removes a package qualifier. This is a no-op if the qualifier is not present.
      * @param key the package qualifier key to remove
      * @return a reference to the builder
@@ -132,8 +175,33 @@ public final class PackageURLBuilder {
     public PackageURLBuilder withoutQualifier(final String key) {
         if (qualifiers != null) {
             qualifiers.remove(key);
-            if (qualifiers.isEmpty()) { qualifiers = null; }
+            if (qualifiers.isEmpty()) {
+                qualifiers = null;
+            }
         }
+        return this;
+    }
+
+    /**
+     * Removes a package qualifier. This is a no-op if the qualifier is not present.
+     * @param keys the package qualifier keys to remove
+     * @return a reference to the builder
+     */
+    public PackageURLBuilder withoutQualifiers(final Set<String> keys) {
+        if (this.qualifiers != null) {
+            keys.forEach(k -> this.qualifiers.remove(k));
+            if (this.qualifiers.isEmpty()) { this.qualifiers = null; }
+        }
+        return this;
+    }
+
+
+    /**
+     * Removes all qualifiers, if any.
+     * @return a reference to this builder.
+     */
+    public PackageURLBuilder withoutQualifiers() {
+        qualifiers = null;
         return this;
     }
 
@@ -191,9 +259,11 @@ public final class PackageURLBuilder {
      * An empty map is returned if no qualifiers is set.
      * @return all qualifiers set in this builder, or an empty map if none are set.
      */
-    public TreeMap<String, String> getQualifiers() {
-        if (qualifiers == null) { return new TreeMap<>(); }
-        return new TreeMap<>(qualifiers);
+    public Map<String, String> getQualifiers() {
+        if (qualifiers == null) {
+            return null;
+        }
+        return Collections.unmodifiableMap(qualifiers);
     }
 
     /**
@@ -202,7 +272,9 @@ public final class PackageURLBuilder {
      * @return qualifier value or {@code null} if one is not set.
      */
     public String getQualifier(String key) {
-        if (qualifiers == null) { return null; }
+        if (qualifiers == null) {
+            return null;
+        }
         return qualifiers.get(key);
     }
 
