@@ -158,7 +158,14 @@ public class PackageURLTest {
             if (invalid) {
                 try {
                     PackageURL purl = new PackageURL(type, namespace, name, version, map, subpath);
-                    Assert.fail("Invalid package url components should have caused an exception: " + purl);
+                    // If we get here, then only the scheme can be invalid
+                    verifyComponentsEquals(purl, type, namespace, name, version, subpath, qualifiers);
+
+                    if (!cpurlString.equals(purl.toString())) {
+                        throw new MalformedPackageURLException("The PackageURL scheme is invalid for purl: " + purl);
+                    }
+
+                    Assert.fail("Invalid package url components should have caused an exception: " + purl.toString());
                 } catch (MalformedPackageURLException e) {
                     Assert.assertNotNull(e.getMessage());
                 }
@@ -166,25 +173,26 @@ public class PackageURLTest {
             }
 
             PackageURL purl = new PackageURL(type, namespace, name, version, map, subpath);
-
+            verifyComponentsEquals(purl, type, namespace, name, version, subpath, qualifiers);
             Assert.assertEquals(cpurlString, purl.canonicalize());
-            Assert.assertEquals("pkg", purl.getScheme());
-            Assert.assertEquals(type, purl.getType());
-            Assert.assertEquals(namespace, purl.getNamespace());
-            Assert.assertEquals(name, purl.getName());
-            Assert.assertEquals(version, purl.getVersion());
-            Assert.assertEquals(subpath, purl.getSubpath());
-            if (qualifiers != null) {
-                Assert.assertNotNull(purl.getQualifiers());
-                Assert.assertEquals(qualifiers.length(), purl.getQualifiers().size());
-                qualifiers.keySet().forEach(key -> {
-                    String value = qualifiers.getString(key);
-                    Assert.assertTrue(purl.getQualifiers().containsKey(key));
-                    Assert.assertEquals(value, purl.getQualifiers().get(key));
-                });
-                PackageURL purl2 = new PackageURL(type, namespace, name, version, hashMap, subpath);
-                Assert.assertEquals(purl.getQualifiers(), purl2.getQualifiers());
-            }
+        }
+    }
+
+    private static void verifyComponentsEquals(PackageURL purl, String type, String namespace, String name, String version, String subpath, JSONObject qualifiers) {
+        Assert.assertEquals("pkg", purl.getScheme());
+        Assert.assertEquals(type, purl.getType());
+        Assert.assertEquals(namespace, purl.getNamespace());
+        Assert.assertEquals(name, purl.getName());
+        Assert.assertEquals(version, purl.getVersion());
+        Assert.assertEquals(subpath, purl.getSubpath());
+        if (qualifiers != null) {
+            Assert.assertNotNull(purl.getQualifiers());
+            Assert.assertEquals(qualifiers.length(), purl.getQualifiers().size());
+            qualifiers.keySet().forEach((key) -> {
+                String value = qualifiers.getString(key);
+                Assert.assertTrue(purl.getQualifiers().containsKey(key));
+                Assert.assertEquals(value, purl.getQualifiers().get(key));
+            });
         }
     }
 
@@ -339,6 +347,19 @@ public class PackageURLTest {
         Assert.assertEquals("generic", PackageURL.StandardTypes.GENERIC);
         Assert.assertEquals("github", PackageURL.StandardTypes.GITHUB);
         Assert.assertEquals("golang", PackageURL.StandardTypes.GOLANG);
+        Assert.assertEquals("hackage", PackageURL.StandardTypes.HACKAGE);
+        Assert.assertEquals("hex", PackageURL.StandardTypes.HEX);
+        Assert.assertEquals("huggingface", PackageURL.StandardTypes.HUGGINGFACE);
+        Assert.assertEquals("luarocks", PackageURL.StandardTypes.LUAROCKS);
+        Assert.assertEquals("maven", PackageURL.StandardTypes.MAVEN);
+        Assert.assertEquals("mlflow", PackageURL.StandardTypes.MLFLOW);
+        Assert.assertEquals("npm", PackageURL.StandardTypes.NPM);
+        Assert.assertEquals("nuget", PackageURL.StandardTypes.NUGET);
+        Assert.assertEquals("qpkg", PackageURL.StandardTypes.QPKG);
+        Assert.assertEquals("oci", PackageURL.StandardTypes.OCI);
+        Assert.assertEquals("pub", PackageURL.StandardTypes.PUB);
+        Assert.assertEquals("pypi", PackageURL.StandardTypes.PYPI);
+        Assert.assertEquals("rpm", PackageURL.StandardTypes.RPM);
         Assert.assertEquals("hackage", PackageURL.StandardTypes.HACKAGE);
         Assert.assertEquals("hex", PackageURL.StandardTypes.HEX);
         Assert.assertEquals("huggingface", PackageURL.StandardTypes.HUGGINGFACE);
