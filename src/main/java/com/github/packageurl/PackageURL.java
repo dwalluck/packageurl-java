@@ -471,11 +471,11 @@ public final class PackageURL implements Serializable {
         }
         purl.append("/");
         if (namespace != null) {
-            purl.append(encodePath(namespace));
+            purl.append(encodePath(namespace, ":"));
             purl.append("/");
         }
         if (name != null) {
-            purl.append(percentEncode(name));
+            purl.append(percentEncode(name, ":"));
         }
         if (version != null) {
             purl.append("@").append(percentEncode(version));
@@ -486,16 +486,24 @@ public final class PackageURL implements Serializable {
                 qualifiers.entrySet().stream().forEachOrdered(entry -> {
                     purl.append(toLowerCase(entry.getKey()));
                     purl.append("=");
-                    purl.append(percentEncode(entry.getValue()));
+                    purl.append(percentEncode(entry.getValue(), ":/"));
                     purl.append("&");
                 });
                 purl.setLength(purl.length() - 1);
             }
             if (subpath != null) {
-                purl.append("#").append(encodePath(subpath));
+                purl.append("#").append(encodePath(subpath, "?#+&="));
             }
         }
         return purl.toString();
+    }
+
+    private String percentEncode(final String input, final Charset charset, final String charsToExclude) {
+        return uriEncode(input, charset, charsToExclude);
+    }
+
+    private String percentEncode(final String input, final String charsToExclude) {
+        return percentEncode(input, StandardCharsets.UTF_8, charsToExclude);
     }
 
     /**
@@ -505,17 +513,17 @@ public final class PackageURL implements Serializable {
      * @return an encoded String
      */
     private String percentEncode(final String input) {
-        return uriEncode(input, StandardCharsets.UTF_8);
+        return percentEncode(input, StandardCharsets.UTF_8, null);
     }
 
-    private static String uriEncode(String source, Charset charset) {
-        if (source == null || source.isEmpty()) {
+    private static String uriEncode(String source, Charset charset, String chars) {
+        if (source == null || source.length() == 0) {
             return source;
         }
 
         StringBuilder builder = new StringBuilder();
         for (byte b : source.getBytes(charset)) {
-            if (isUnreserved(b)) {
+            if (isUnreserved(b) || chars != null && chars.indexOf(b) != -1) {
                 builder.append((char) b);
             }
             else {
