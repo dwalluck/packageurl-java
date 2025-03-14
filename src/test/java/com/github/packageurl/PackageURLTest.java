@@ -93,7 +93,7 @@ class PackageURLTest {
                 try {
                     PackageURL purl = new PackageURL(purlString);
                     fail("Invalid purl should have caused an exception: " + purl);
-                } catch (MalformedPackageURLException e) {
+                } catch (MalformedPackageURLException | ValidationException e) {
                     assertNotNull(e.getMessage());
                 }
                 continue;
@@ -156,7 +156,7 @@ class PackageURLTest {
                 try {
                     PackageURL purl = new PackageURL(type, namespace, name, version, map, subpath);
                     fail("Invalid package url components should have caused an exception: " + purl);
-                } catch (NullPointerException | MalformedPackageURLException e) {
+                } catch (NullPointerException | MalformedPackageURLException | ValidationException e) {
                     assertNotNull(e.getMessage());
                 }
                 continue;

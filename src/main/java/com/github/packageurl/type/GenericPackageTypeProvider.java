@@ -19,27 +19,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.github.packageurl;
+package com.github.packageurl.type;
 
-/**
- * Internal exception class intended to be used within validation contained in lambda expressions.
- *
- * @author Jeremy Long
- * @since 1.1.0
- */
-class ValidationException extends RuntimeException {
+import com.github.packageurl.MalformedPackageURLException;
+import com.github.packageurl.PackageURL;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
-    private static final long serialVersionUID = 2045474478691037663L;
+import java.util.Map;
 
-    /**
-     * Constructs a {@code ValidationException}.
-     * @param msg the error message
-     */
-    ValidationException(String msg) {
-        super(msg);
+public class GenericPackageTypeProvider implements PackageTypeProvider {
+    @Override
+    public void validateComponents(@NonNull String type, @Nullable String namespace, @Nullable String name, @Nullable String version, @Nullable Map<String, String> qualifiers, @Nullable String subpath) throws MalformedPackageURLException {
+        PackageTypeProvider.super.validateComponents(type, namespace, name, version, qualifiers, subpath);
     }
 
-    ValidationException(String msg, Throwable cause) {
-        super(msg, cause);
+    @Override
+    public @NonNull PackageURL normalizeComponents(@NonNull String type, @Nullable String namespace, @Nullable String name, @Nullable String version, @Nullable Map<String, String> qualifiers, @Nullable String subpath) throws MalformedPackageURLException {
+        return PackageTypeProvider.super.normalizeComponents(type, namespace, name, version, qualifiers, subpath);
     }
 }

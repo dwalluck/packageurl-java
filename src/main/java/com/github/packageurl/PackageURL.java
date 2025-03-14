@@ -34,6 +34,8 @@ import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
+
+import com.github.packageurl.type.PackageTypeFactory;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -96,7 +98,7 @@ public final class PackageURL implements Serializable {
      * @deprecated use {@link #PackageURL(String, String, String, String, Map, String)} instead
      */
     @Deprecated
-    public PackageURL(final String type, final @Nullable String namespace, final String name, final @Nullable String version,
+    public PackageURL(final @Nullable String type, final @Nullable String namespace, final @Nullable String name, final @Nullable String version,
                       final @Nullable TreeMap<String, String> qualifiers, final @Nullable String subpath)
             throws MalformedPackageURLException {
         this.type = toLowerCase(validateType(requireNonNull(type, "type")));
@@ -105,7 +107,8 @@ public final class PackageURL implements Serializable {
         this.version = validateVersion(type, version);
         this.qualifiers = parseQualifiers(qualifiers);
         this.subpath = validateSubpath(subpath);
-        verifyTypeConstraints(this.type, this.namespace, this.name);
+        //verifyTypeConstraints(this.type, this.namespace, this.name);
+        PackageTypeFactory.getDefault().validateComponents(type, namespace, name, version, qualifiers, subpath);
     }
 
     /**
@@ -121,7 +124,7 @@ public final class PackageURL implements Serializable {
      * @throws NullPointerException if {@code type} or {@code name} are {@code null}
      * @since 1.6.0
      */
-    public PackageURL(final String type, final @Nullable String namespace, final String name, final @Nullable String version,
+    public PackageURL(final @Nullable String type, final @Nullable String namespace, final @Nullable String name, final @Nullable String version,
                       final @Nullable Map<String, @Nullable String> qualifiers, final @Nullable String subpath)
             throws MalformedPackageURLException {
         this(type, namespace, name, version, (qualifiers != null) ? new TreeMap<>(qualifiers) : null, subpath);
@@ -280,7 +283,7 @@ public final class PackageURL implements Serializable {
         return (isAlphaNumeric(c) || c == '.' || c == '+' || c == '-');
     }
 
-    private static boolean isValidCharForKey(int c) {
+    public static boolean isValidCharForKey(int c) {
         return (isAlphaNumeric(c) || c == '.' || c == '_' || c == '-');
     }
 
@@ -438,6 +441,10 @@ public final class PackageURL implements Serializable {
         }
     }
 
+    public PackageURL normalize() throws MalformedPackageURLException {
+        return PackageTypeFactory.getDefault().normalizeComponents(type, namespace, name, version, qualifiers, subpath);
+    }
+
     /**
      * Returns the canonicalized representation of the purl.
      *
@@ -466,6 +473,17 @@ public final class PackageURL implements Serializable {
      * @since 1.3.2
      */
     private String canonicalize(boolean coordinatesOnly) {
+        try {
+            PackageURL packageURL = normalize();
+            namespace = packageURL.getNamespace();
+            name = packageURL.getName();
+            version = packageURL.getVersion();
+            qualifiers = packageURL.getQualifiers();
+            subpath = packageURL.getSubpath();
+        } catch (MalformedPackageURLException e) {
+            throw new ValidationException("Normalization failed", e);
+        }
+
         final StringBuilder purl = new StringBuilder();
         purl.append(SCHEME_PART).append(type).append("/");
         if (namespace != null) {
@@ -523,7 +541,7 @@ public final class PackageURL implements Serializable {
         return (isValidCharForKey(c) || c == '~');
     }
 
-    private static boolean isAlpha(int c) {
+    public static boolean isAlpha(int c) {
         return (isLowerCase(c) || isUpperCase(c));
     }
 
@@ -531,8 +549,12 @@ public final class PackageURL implements Serializable {
         return (c >= '0' && c <= '9');
     }
 
-    private static boolean isAlphaNumeric(int c) {
+    public static boolean isAlphaNumeric(int c) {
         return (isDigit(c) || isAlpha(c));
+    }
+
+    public static boolean isWhitespace(int c) {
+        return (c == ' ' || c == '\t' || c == '\r' || c == '\n');
     }
 
     private static boolean isUpperCase(int c) {
@@ -559,7 +581,7 @@ public final class PackageURL implements Serializable {
         return (c ^ 0x20);
     }
 
-    private static String toLowerCase(String s) {
+    public static String toLowerCase(String s) {
         int pos = indexOfFirstUpperCaseChar(s);
 
         if (pos == -1) {
@@ -697,7 +719,7 @@ public final class PackageURL implements Serializable {
                 remainder = remainder.substring(0, index);
                 this.namespace = validateNamespace(parsePath(remainder.substring(start), false));
             }
-            verifyTypeConstraints(this.type, this.namespace, this.name);
+            //verifyTypeConstraints(this.type, this.namespace, this.name);
         } catch (URISyntaxException e) {
             throw new MalformedPackageURLException("Invalid purl: " + e.getMessage(), e);
         }
