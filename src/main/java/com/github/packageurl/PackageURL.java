@@ -23,6 +23,7 @@ package com.github.packageurl;
 
 import static java.util.Objects.requireNonNull;
 
+import com.github.packageurl.type.PackageTypeFactory;
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -77,7 +78,7 @@ public final class PackageURL implements Serializable {
     private String type;
 
     /**
-     * The name prefix such as a Maven groupid, a Docker image owner, a GitHub user or organization.
+     * The name prefix such as a Maven groupId, a Docker image owner, a GitHub user or organization.
      * Optional and type-specific.
      */
     private @Nullable String namespace;
@@ -181,7 +182,6 @@ public final class PackageURL implements Serializable {
         this.version = validateVersion(this.type, version);
         this.qualifiers = parseQualifiers(qualifiers);
         this.subpath = validateSubpath(subpath);
-        verifyTypeConstraints(this.type, this.namespace, this.name);
     }
 
     /**
@@ -277,11 +277,11 @@ public final class PackageURL implements Serializable {
         return value;
     }
 
-    private static boolean isValidCharForType(int c) {
+    public static boolean isValidCharForType(int c) {
         return (isAlphaNumeric(c) || c == '.' || c == '+' || c == '-');
     }
 
-    private static boolean isValidCharForKey(int c) {
+    public static boolean isValidCharForKey(int c) {
         return (isAlphaNumeric(c) || c == '.' || c == '_' || c == '-');
     }
 
@@ -455,6 +455,14 @@ public final class PackageURL implements Serializable {
         }
     }
 
+    public PackageURL normalize() throws MalformedPackageURLException {
+        System.out.println("Normalizing PackageURL " + type + " " + namespace + " " + name + " " + version + " "
+                + qualifiers + " " + subpath);
+        PackageTypeFactory.getInstance().validateComponents(type, namespace, name, version, qualifiers, subpath);
+        return PackageTypeFactory.getInstance()
+                .normalizeComponents(type, namespace, name, version, qualifiers, subpath);
+    }
+
     /**
      * Returns the canonicalized representation of the purl.
      *
@@ -482,6 +490,17 @@ public final class PackageURL implements Serializable {
      * @since 1.3.2
      */
     private String canonicalize(boolean coordinatesOnly) {
+        try {
+            PackageURL packageURL = normalize();
+            namespace = packageURL.getNamespace();
+            name = packageURL.getName();
+            version = packageURL.getVersion();
+            qualifiers = packageURL.getQualifiers();
+            subpath = packageURL.getSubpath();
+        } catch (MalformedPackageURLException e) {
+            throw new ValidationException("Normalization failed", e);
+        }
+
         final StringBuilder purl = new StringBuilder();
         purl.append(SCHEME_PART).append(type).append('/');
         if (namespace != null) {
@@ -494,7 +513,7 @@ public final class PackageURL implements Serializable {
         }
 
         if (!coordinatesOnly) {
-            if (qualifiers != null) {
+            if (!qualifiers.isEmpty()) {
                 purl.append('?');
                 Set<Map.Entry<String, String>> entries = qualifiers.entrySet();
                 boolean separator = false;
@@ -523,7 +542,7 @@ public final class PackageURL implements Serializable {
         return !isUnreserved(c);
     }
 
-    private static boolean isAlpha(int c) {
+    public static boolean isAlpha(int c) {
         return (isLowerCase(c) || isUpperCase(c));
     }
 
@@ -531,8 +550,12 @@ public final class PackageURL implements Serializable {
         return (c >= '0' && c <= '9');
     }
 
-    private static boolean isAlphaNumeric(int c) {
+    public static boolean isAlphaNumeric(int c) {
         return (isDigit(c) || isAlpha(c));
+    }
+
+    public static boolean isWhitespace(int c) {
+        return (c == ' ' || c == '\t' || c == '\r' || c == '\n');
     }
 
     private static boolean isUpperCase(int c) {
@@ -559,7 +582,7 @@ public final class PackageURL implements Serializable {
         return isUpperCase(c) ? (c ^ 0x20) : c;
     }
 
-    private static String toLowerCase(String s) {
+    public static String toLowerCase(String s) {
         int pos = indexOfFirstUpperCaseChar(s);
 
         if (pos == -1) {
@@ -765,25 +788,8 @@ public final class PackageURL implements Serializable {
                 remainder = remainder.substring(0, index);
                 this.namespace = validateNamespace(this.type, parsePath(remainder.substring(start), false));
             }
-            verifyTypeConstraints(this.type, this.namespace, this.name);
         } catch (URISyntaxException e) {
             throw new MalformedPackageURLException("Invalid purl: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Some purl types may have specific constraints. This method attempts to verify them.
-     * @param type the purl type
-     * @param namespace the purl namespace
-     * @throws MalformedPackageURLException if constraints are not met
-     */
-    private static void verifyTypeConstraints(String type, @Nullable String namespace, @Nullable String name)
-            throws MalformedPackageURLException {
-        if (StandardTypes.MAVEN.equals(type)) {
-            if (isEmpty(namespace) || isEmpty(name)) {
-                throw new MalformedPackageURLException(
-                        "The PackageURL specified is invalid. Maven requires both a namespace and name.");
-            }
         }
     }
 
@@ -1108,7 +1114,7 @@ public final class PackageURL implements Serializable {
          * @deprecated use {@link #DEB} instead
          */
         @Deprecated
-        public static final String DEBIAN = "deb";
+        public static final String DEBIAN = DEB;
         /**
          * Nixos packages.
          *
@@ -1116,7 +1122,7 @@ public final class PackageURL implements Serializable {
          * @deprecated use {@link #NIX} instead
          */
         @Deprecated
-        public static final String NIXPKGS = "nix";
+        public static final String NIXPKGS = NIX;
 
         private StandardTypes() {}
     }
